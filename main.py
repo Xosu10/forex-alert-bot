@@ -2,7 +2,7 @@ import logging
 from datetime import datetime, timezone
 from zoneinfo import ZoneInfo
 
-from config import DAILY_SUMMARY_HOUR
+from config import SUMMARY_HOUR
 from daily_summary import build_daily_summary_message, events_today
 from discord_notifier import send_discord_message
 from fetch import get_events
@@ -10,8 +10,10 @@ from filter import filter_usd_high
 from messages import build_message
 from notifications import pending_notifications
 from storage import build_event_id, init_db, is_notified, mark_notified
+from weekly_summary import build_weekly_summary_message
 
 MADRID_TZ = ZoneInfo("Europe/Madrid")
+MONDAY = 0
 
 logging.basicConfig(
     level=logging.INFO,
@@ -22,7 +24,7 @@ logger = logging.getLogger("forex_bot")
 
 def check_daily_summary(usd_high_events, now_utc):
     now_madrid = now_utc.astimezone(MADRID_TZ)
-    if now_madrid.hour < DAILY_SUMMARY_HOUR:
+    if now_madrid.hour < SUMMARY_HOUR:
         return
 
     today_key = now_madrid.strftime("%Y-%m-%d")
@@ -34,6 +36,22 @@ def check_daily_summary(usd_high_events, now_utc):
     send_discord_message(message)
     mark_notified(today_key, "daily_summary")
     logger.info("Resumen diario enviado (%s eventos hoy)", len(today_events))
+
+
+def check_weekly_summary(usd_high_events, now_utc):
+    now_madrid = now_utc.astimezone(MADRID_TZ)
+    if now_madrid.weekday() != MONDAY or now_madrid.hour < SUMMARY_HOUR:
+        return
+
+    iso_year, iso_week, _ = now_madrid.isocalendar()
+    week_key = f"{iso_year}-W{iso_week:02d}"
+    if is_notified(week_key, "weekly_summary"):
+        return
+
+    message = build_weekly_summary_message(usd_high_events, now_madrid)
+    send_discord_message(message)
+    mark_notified(week_key, "weekly_summary")
+    logger.info("Resumen semanal enviado (%s eventos esta semana)", len(usd_high_events))
 
 
 def check_event_notifications(usd_high_events, now_utc):
@@ -55,6 +73,7 @@ def run_cycle():
     usd_high_events = filter_usd_high(events)
 
     check_daily_summary(usd_high_events, now_utc)
+    check_weekly_summary(usd_high_events, now_utc)
     check_event_notifications(usd_high_events, now_utc)
 
 

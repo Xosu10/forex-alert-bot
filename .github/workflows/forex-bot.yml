@@ -27,9 +27,10 @@ jobs:
       - name: Ejecutar el bot
         env:
           DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
+          REMINDER_MINUTES_BEFORE: ${{ vars.REMINDER_MINUTES_BEFORE }}
           ALERT_MINUTES_BEFORE: ${{ vars.ALERT_MINUTES_BEFORE }}
           ACTUAL_CHECK_WINDOW_MINUTES: ${{ vars.ACTUAL_CHECK_WINDOW_MINUTES }}
-          DAILY_SUMMARY_HOUR: ${{ vars.DAILY_SUMMARY_HOUR }}
+          SUMMARY_HOUR: ${{ vars.SUMMARY_HOUR }}
         run: python main.py
 
       - name: Guardar el registro de avisos ya enviados
