@@ -1,0 +1,41 @@
+name: Forex Factory USD Alert Bot
+
+on:
+  schedule:
+    - cron: '*/5 * * * *'
+  # Repositorio público -> minutos de GitHub Actions ilimitados y gratis, cada 5 minutos sin problema.
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Descargar el repositorio
+        uses: actions/checkout@v4
+
+      - name: Configurar Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Instalar dependencias
+        run: pip install -r requirements.txt
+
+      - name: Ejecutar el bot
+        env:
+          DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
+          ALERT_MINUTES_BEFORE: ${{ vars.ALERT_MINUTES_BEFORE }}
+          ACTUAL_CHECK_WINDOW_MINUTES: ${{ vars.ACTUAL_CHECK_WINDOW_MINUTES }}
+          DAILY_SUMMARY_HOUR: ${{ vars.DAILY_SUMMARY_HOUR }}
+        run: python main.py
+
+      - name: Guardar el registro de avisos ya enviados
+        run: |
+          git config user.name "forex-alert-bot"
+          git config user.email "actions@users.noreply.github.com"
+          git add events.db
+          git diff --staged --quiet || git commit -m "Actualizar registro de avisos enviados"
+          git push
